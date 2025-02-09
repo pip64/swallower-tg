@@ -42,6 +42,7 @@ npm install
 token=""
 developers=""
 bot_name=""
+messages_limit=""
 
 database_username=""
 database_password=""
@@ -52,6 +53,7 @@ database_name=""
 - **token:** Токен вашего Telegram-бота.
 - **developers:** Идентификаторы разработчиков (можно через запятую, если их несколько).
 - **bot_name:** Имя бота.
+- **messages_limit:** Максимальное количество сохраненных сообщений (к примеру, 1000).
 - **Параметры базы данных:** Данные для подключения к вашей базе данных.
 
 ## Запуск бота
