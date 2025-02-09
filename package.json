@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "test": "node --env-file=.env tests.mjs",
-    "start": "node --env-file=.env index.mjs"
+    "start": "node index.mjs"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.4.7",
     "get-random-emoji": "^1.0.0",
     "knex": "^3.1.0",
     "markov-chainer": "^0.1.8",

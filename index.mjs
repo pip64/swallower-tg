@@ -2,6 +2,7 @@ import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import fs from 'fs';
 import path from 'path';
+import 'dotenv/config';
 
 import startCommand from "./commands/start.mjs";
 import on_message from "./commands/on_message.mjs";
@@ -14,6 +15,9 @@ import { clearAllHandler, clearMessagesHandler, clearStickersHandler } from "./h
 import { enableBotHandler, disableBotHandler } from "./handlers/switcher.mjs";
 import switcher from "./commands/switcher.mjs";
 import informationChat from "./commands/info.mjs";
+
+
+
 
 const bot = new Telegraf(process.env.token);
 

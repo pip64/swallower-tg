@@ -8,8 +8,8 @@ export default async function saveMessage(text, channel_id, type) {
             const channelDatabase = await fs.readFile(
                 `./database/${type}/${channel_id}.txt`, { encoding: "utf-8" });
 
-            if (channelDatabase.split("\n").length >= 5000) {
-                if (await clearOldMessages(channel_id, type, channelDatabase.split("\n").length - 5000)) {
+            if (channelDatabase.split("\n").length >= Number(process.env.messages_limit)) {
+                if (await clearOldMessages(channel_id, type, channelDatabase.split("\n").length - Number(process.env.messages_limit))) {
                     const channelDatabaseWrite = await fs.appendFile(`./database/${type}/${channel_id}.txt`, `\n${text}`)
                         .then(() => true)
                         .catch((error) => {
