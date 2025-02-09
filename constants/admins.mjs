@@ -1,1 +1,1 @@
-export default [...process.env.developers.split(",")]
+export default [...process.env.developers.split(",").map(dev => dev.trim())]

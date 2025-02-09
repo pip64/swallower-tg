@@ -3,7 +3,7 @@ import database from "../../database/index.mjs";
 
 export default async function mailToAll(ctx) {
     if (ctx.chat.type === "private") {
-        if (admins.includes(ctx.message.from.id)) {
+        if (admins.includes(String(ctx.message.from.id))) {
             const text = ctx.message.text.split("/mail")[1];
 
             if (text) {
