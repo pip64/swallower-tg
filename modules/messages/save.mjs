@@ -23,6 +23,7 @@ export default async function saveMessage(text, channel_id, type, messages_type)
                 }
 
             } else {
+                if (channelDatabase.toLowerCase().includes(text.toLowerCase())) return true;
                 const channelDatabaseWrite = await fs.appendFile(file_name, `\n${text}`)
                     .then(() => true)
                     .catch((error) => {

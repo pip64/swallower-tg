@@ -4,3 +4,4 @@ database/stickers/*
 node_modules
 .npm
 *.DS_Store
+database/direct_messages.txt
