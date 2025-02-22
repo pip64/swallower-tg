@@ -2,15 +2,17 @@ import * as fs from 'node:fs/promises';
 import { constants } from 'node:fs/promises';
 import clearOldMessages from './clearOld.mjs';
 
-export default async function saveMessage(text, channel_id, type) {
+export default async function saveMessage(text, channel_id, type, messages_type) {
     try {
-        if (await fs.access(`./database/${type}/${channel_id}.txt`, constants.R_OK | constants.W_OK).then(() => true).catch(() => false)) {
-            const channelDatabase = await fs.readFile(
-                `./database/${type}/${channel_id}.txt`, { encoding: "utf-8" });
+        const file_name = messages_type === "direct" ? "./database/direct_messages.txt" : `./database/${type}/${channel_id}.txt`;
 
-            if (channelDatabase.split("\n").length >= Number(process.env.messages_limit)) {
+        if (await fs.access(file_name, constants.R_OK | constants.W_OK).then(() => true).catch(() => false)) {
+            const channelDatabase = await fs.readFile(
+                file_name, { encoding: "utf-8" });
+
+            if (channelDatabase.split("\n").length >= Number(process.env.messages_limit) && messages_type !== "direct") {
                 if (await clearOldMessages(channel_id, type, channelDatabase.split("\n").length - Number(process.env.messages_limit))) {
-                    const channelDatabaseWrite = await fs.appendFile(`./database/${type}/${channel_id}.txt`, `\n${text}`)
+                    const channelDatabaseWrite = await fs.appendFile(file_name, `\n${text}`)
                         .then(() => true)
                         .catch((error) => {
                             console.log(error);
@@ -21,7 +23,7 @@ export default async function saveMessage(text, channel_id, type) {
                 }
 
             } else {
-                const channelDatabaseWrite = await fs.appendFile(`./database/${type}/${channel_id}.txt`, `\n${text}`)
+                const channelDatabaseWrite = await fs.appendFile(file_name, `\n${text}`)
                     .then(() => true)
                     .catch((error) => {
                         console.log(error);
@@ -31,7 +33,7 @@ export default async function saveMessage(text, channel_id, type) {
                 return channelDatabaseWrite;
             }
         } else {
-            return await fs.open(`./database/${type}/${channel_id}.txt`, 'w').then(async () => await saveMessage(text, channel_id, type)).catch();
+            return await fs.open(messages_type === "direct" ? "./database/direct_messages.txt" : `./database/${type}/${channel_id}.txt`, 'w').then(async () => await saveMessage(text, channel_id, type, messages_type)).catch();
         }
     } catch (error) {
         console.log(error)
