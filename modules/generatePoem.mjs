@@ -1,6 +1,20 @@
 import Markov from "./markov.mjs";
 import fs from 'fs';
 
+function mostFrequentWord(text) {
+    const words = text.toLowerCase().match(/\p{L}+/gu);
+    if (!words) return null;
+
+    const frequency = words.reduce((acc, word) => {
+        acc[word] = (acc[word] || 0) + 1;
+        return acc;
+    }, {});
+
+    return Object.entries(frequency).reduce((max, entry) =>
+        entry[1] > max[1] ? entry : max
+    )[0];
+}
+
 export default function generatePoem() {
     let poem = "";
     let rhyme = "";
@@ -29,5 +43,5 @@ export default function generatePoem() {
         poem += line + "\n";
     }
 
-    return poem
+    return [poem, mostFrequentWord(poem)];
 }
