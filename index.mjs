@@ -15,6 +15,7 @@ import { clearAllHandler, clearMessagesHandler, clearStickersHandler } from "./h
 import { enableBotHandler, disableBotHandler } from "./handlers/switcher.mjs";
 import switcher from "./commands/switcher.mjs";
 import informationChat from "./commands/info.mjs";
+import generatePoemCommand from "./commands/poem.mjs";
 
 
 
@@ -62,6 +63,7 @@ bot.command("mail", wrapHandlerWithTimeout(mailToAll));
 bot.command("mode", wrapHandlerWithTimeout(Mode));
 bot.command("switcher", wrapHandlerWithTimeout(switcher));
 bot.command("information", wrapHandlerWithTimeout(informationChat));
+bot.command("poem", wrapHandlerWithTimeout(generatePoemCommand));
 
 bot.action("bot_enable", wrapHandlerWithTimeout(enableBotHandler));
 bot.action("bot_disable", wrapHandlerWithTimeout(disableBotHandler));
