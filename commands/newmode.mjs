@@ -17,7 +17,7 @@ export default async function newMode (ctx) {
 
             if (!mode[0]) return await ctx.reply("❌ " + mode[1]);
 
-            await ctx.reply(mode[1] + "\nЧтобы использовать его, напишите /mode " + mode[0]);
+            await ctx.reply(mode[1] + "\nЧтобы использовать его в группе, напишите /mode " + mode[0]);
         } else {
             await initChat(ctx.message.chat.id, true, "default", ctx, "users");
             await newMode(ctx);
