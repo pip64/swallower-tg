@@ -39,7 +39,7 @@ export default async function Mode(ctx) {
 
                             if (!changeMode) return await ctx.reply("❌ Не удалось установить режим.")
                             
-                            await ctx.reply(`✅ Установлен режим "${mode?.name}"\nВы всегда можете изменить режим обратно в /mode.`);
+                            await ctx.reply(`✅ Установлен режим "${mode?.name}".\nВы всегда можете изменить режим обратно в /mode.`);
                         } else {
                             ctx.replyWithMarkdown(`Заглыт будет менять свои сообщения под режимы.\n\nПример: \`${await modes[Object.keys(modes).choice()](phrases.choice())}\`\n\nВыберите режим:`, {
                                 reply_markup: {
