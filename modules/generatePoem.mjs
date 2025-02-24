@@ -15,11 +15,11 @@ function mostFrequentWord(text) {
     )[0];
 }
 
-export default function generatePoem() {
+export default function generatePoem(file) {
     let poem = "";
     let rhyme = "";
 
-    const text = fs.readFileSync('./database/direct_messages.txt', 'utf-8');
+    const text = fs.readFileSync(file, 'utf-8');
 
     const chain = new Markov(text)
 
@@ -43,5 +43,5 @@ export default function generatePoem() {
         poem += line + "\n";
     }
 
-    return [poem, mostFrequentWord(poem)];
+    return [poem || "Я стих сочинить не смог\nУж сложно мне, поверь.", mostFrequentWord(poem) || "Не смог..."];
 }
