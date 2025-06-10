@@ -10,23 +10,55 @@ export default async function mailToAll(ctx) {
                 const chats = await database("channels").catch(() => null);
 
                 if (chats) {
-                    await ctx.reply(`⏳ Начинается рассылка.\n\nЧатов обнаружено: ${chats.length}`)
+                    const totalChats = chats.length;
+                    await ctx.reply(`⏳ Начинается рассылка.\n\nЧатов обнаружено: ${totalChats}`);
 
                     let success = 0;
+                    let failed = 0;
+                    const BATCH_SIZE = 10;
+                    
+                    for (let i = 0; i < chats.length; i += BATCH_SIZE) {
+                        const batch = chats.slice(i, i + BATCH_SIZE);
+                        const batchPromises = batch.map(async (chat) => {
+                            try {
+                                await ctx.telegram.sendMessage(
+                                    chat.channel_id, 
+                                    `⚠️ *Сообщение от разработчика*\n\n${text.trim()}\n\n[Канал Заглыта](https://t.me/zaglit)`, 
+                                    { parse_mode: 'Markdown' }
+                                );
+                                success++;
+                                return true;
+                            } catch (error) {
+                                console.log(`Failed to send to ${chat.channel_id}:`, error);
+                                failed++;
+                                return false;
+                            }
+                        });
 
-                    for (const chat of chats) {
-                        try {
-                            await ctx.telegram.sendMessage(chat.channel_id, `⚠️ *Сообщение от разработчика*\n\n${text.trim()}\n\n[Канал Заглыта](https://t.me/zaglit)`, { parse_mode: 'Markdown' })
-                            success += 1;                            
-                        } catch (error) {console.log(error)}
+                        await Promise.all(batchPromises);
+                        
+                        if (i % 10 === 0) {
+                            await ctx.reply(
+                                `📊 Прогресс рассылки:\n` +
+                                `✅ Успешно: ${success}\n` +
+                                `❌ Ошибок: ${failed}\n` +
+                                `⏳ Осталось: ${totalChats - (success + failed)}`
+                            ).catch(console.error);
+                        }
                     }
 
-                    await ctx.reply(`✅ Рассылка проведена.\n\nДоставлено: ${success}/${chats.length}`)
+                    await ctx.reply(
+                        `✅ Рассылка завершена.\n\n` +
+                        `📊 Итоги:\n` +
+                        `✅ Успешно: ${success}\n` +
+                        `❌ Ошибок: ${failed}\n` +
+                        `📝 Всего: ${totalChats}`
+                    );
                 } else {
-                    await ctx.reply("Упс! Произошла ошибка при получении чатов из БД 😅")
+                    await ctx.reply("Упс! Произошла ошибка при получении чатов из БД 😅");
                 }
             } else {
-                await ctx.reply("❌ Укажите текст рассылки!")
+                await ctx.reply("❌ Укажите текст рассылки!");
             }
         }
     }
