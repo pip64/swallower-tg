@@ -19,6 +19,8 @@ export default async function selectModeHandler(ctx) {
         const messageId = ctx.callbackQuery.message.id;
         const author = ctx.callbackQuery.from.id;
 
+        await ctx.answerCbQuery().catch(() => {});
+
         isAdmin(chatId, author, ctx).then(async (result) => {
         	try {
                 if (result) {

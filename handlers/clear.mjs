@@ -7,6 +7,8 @@ import { constants } from 'node:fs/promises';
 export async function clearMessagesHandler(ctx) {
     try {
         if (['group', 'supergroup'].includes(ctx.chat.type)) {
+            await ctx.answerCbQuery().catch(() => {});
+
             isAdmin(ctx.callbackQuery.message.chat.id, ctx.callbackQuery.from.id, ctx).then(async (result) => {
             	try {
                     const [isExists, chat] = await isChatExists(ctx.callbackQuery.message.chat.id);
@@ -47,6 +49,8 @@ export async function clearMessagesHandler(ctx) {
 export async function clearStickersHandler(ctx) {
     try {
         if (['group', 'supergroup'].includes(ctx.chat.type)) {
+            await ctx.answerCbQuery().catch(() => {});
+
             isAdmin(ctx.callbackQuery.message.chat.id, ctx.callbackQuery.from.id, ctx).then(async (result) => {
             	try {
                     const [isExists, chat] = await isChatExists(ctx.callbackQuery.message.chat.id);
