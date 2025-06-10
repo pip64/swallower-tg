@@ -20,10 +20,34 @@ import newMode from "./commands/newmode.mjs"
 
 const bot = new Telegraf(process.env.token)
 const requestQueue = new Map()
-const MAX_CONCURRENT_REQUESTS = 50
+const messageQueue = new Map()
+const MAX_CONCURRENT_REQUESTS = 30
+const REQUEST_TIMEOUT = 15000
+const MAX_QUEUE_SIZE = 1000
 
 const wrapHandlerWithTimeout = (handler, timeout = 30000) => {
     return async (ctx, next) => {
+        const chatId = ctx.chat?.id
+        if (!chatId) {
+            return handler(ctx, next)
+        }
+
+        if (requestQueue.size >= MAX_CONCURRENT_REQUESTS) {
+            console.warn(`Too many concurrent requests (${requestQueue.size}/${MAX_CONCURRENT_REQUESTS})`)
+            try {
+                await ctx.reply("Слишком много запросов, попробуйте позже")
+            } catch (error) {
+                console.error('Failed to send rate limit message:', error)
+            }
+            return
+        }
+
+        const requestInfo = {
+            type: ctx.updateType,
+            startTime: Date.now()
+        }
+        requestQueue.set(chatId, requestInfo)
+
         let timeoutId
         const timeoutPromise = new Promise((_, reject) => {
             timeoutId = setTimeout(() => {
@@ -40,7 +64,7 @@ const wrapHandlerWithTimeout = (handler, timeout = 30000) => {
             return result
         } catch (error) {
             clearTimeout(timeoutId)
-            console.error(`Handler error: ${error.message}`)
+            console.error(`Handler error for ${requestInfo.type}: ${error.message}`)
             logErrorToFile(error)
             
             if (ctx && ctx.reply && !ctx.replied) {
@@ -52,6 +76,8 @@ const wrapHandlerWithTimeout = (handler, timeout = 30000) => {
             }
             
             throw error
+        } finally {
+            requestQueue.delete(chatId)
         }
     }
 }
@@ -71,14 +97,44 @@ const logErrorToFile = (error) => {
     fs.appendFileSync(errorFilePath, logMessage, { encoding: 'utf8' })
 }
 
-const processRequest = async (chatId, handler) => {
+const processQueue = async (chatId) => {
+    const queue = messageQueue.get(chatId) || []
+    if (queue.length === 0) return
+
     if (requestQueue.size >= MAX_CONCURRENT_REQUESTS) {
-        console.warn(`Too many concurrent requests for chat ${chatId}`)
+        if (queue.length > MAX_QUEUE_SIZE) {
+            queue.shift()
+        }
         return
     }
+
+    const handler = queue.shift()
     requestQueue.set(chatId, true)
     try {
         await handler()
+    } finally {
+        requestQueue.delete(chatId)
+        if (queue.length > 0) {
+            processQueue(chatId)
+        }
+    }
+}
+
+const processRequest = async (chatId, handler) => {
+    if (requestQueue.size >= MAX_CONCURRENT_REQUESTS) {
+        console.warn(`Too many concurrent requests for chat ${chatId}, request dropped`)
+        return
+    }
+
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), REQUEST_TIMEOUT)
+    })
+
+    requestQueue.set(chatId, true)
+    try {
+        await Promise.race([handler(), timeoutPromise])
+    } catch (error) {
+        console.error(`Error processing request for chat ${chatId}:`, error)
     } finally {
         requestQueue.delete(chatId)
     }
@@ -87,13 +143,20 @@ const processRequest = async (chatId, handler) => {
 setInterval(() => {
     const used = process.memoryUsage()
     console.log(`Memory usage: ${Math.round(used.heapUsed / 1024 / 1024)}MB`)
-}, 60000)
+    console.log(`Active requests: ${requestQueue.size}/${MAX_CONCURRENT_REQUESTS}`)
+    
+    const now = Date.now()
+    for (const [chatId, info] of requestQueue.entries()) {
+        const duration = now - info.startTime
+        console.log(`Chat ${chatId}: ${info.type} request running for ${duration}ms`)
+    }
+}, 30000)
 
 bot.start(wrapHandlerWithTimeout(startCommand))
 bot.command("enable", wrapHandlerWithTimeout(switcher))
 bot.command("disable", wrapHandlerWithTimeout(switcher))
 bot.command("clear", wrapHandlerWithTimeout(clear))
-bot.command("mail", wrapHandlerWithTimeout(mailToAll))
+bot.command("mail", wrapHandlerWithTimeout(mailToAll, 300000))
 bot.command("mode", wrapHandlerWithTimeout(Mode))
 bot.command("switcher", wrapHandlerWithTimeout(switcher))
 bot.command("information", wrapHandlerWithTimeout(informationChat))
@@ -130,7 +193,7 @@ bot.launch({
     allowedUpdates: ['message', 'callback_query'],
     polling: {
         timeout: 30,
-        limit: 100,
+        limit: 50,
         retryAfter: 1
     }
 }, () => console.log(process.env.bot_name, 'успешно запущен!'))
