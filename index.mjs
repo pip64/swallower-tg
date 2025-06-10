@@ -1,62 +1,63 @@
-import { Telegraf } from "telegraf";
-import { message } from "telegraf/filters";
-import fs from 'fs';
-import path from 'path';
-import 'dotenv/config';
+import { Telegraf } from "telegraf"
+import { message } from "telegraf/filters"
+import fs from 'fs'
+import path from 'path'
+import 'dotenv/config'
 
-import startCommand from "./commands/start.mjs";
-import on_message from "./commands/on_message.mjs";
-import on_sticker from "./commands/on_sticker.mjs";
-import clear from "./commands/clear.mjs";
-import mailToAll from "./commands/admin/mail_to_all.mjs";
-import Mode from "./commands/mode.mjs";
-import selectModeHandler from "./handlers/select_mode.mjs";
-import { clearAllHandler, clearMessagesHandler, clearStickersHandler } from "./handlers/clear.mjs";
-import { enableBotHandler, disableBotHandler } from "./handlers/switcher.mjs";
-import switcher from "./commands/switcher.mjs";
-import informationChat from "./commands/info.mjs";
-import generatePoemCommand from "./commands/poem.mjs";
-import newMode from "./commands/newmode.mjs";
+import startCommand from "./commands/start.mjs"
+import on_message from "./commands/on_message.mjs"
+import on_sticker from "./commands/on_sticker.mjs"
+import clear from "./commands/clear.mjs"
+import mailToAll from "./commands/admin/mail_to_all.mjs"
+import Mode from "./commands/mode.mjs"
+import selectModeHandler from "./handlers/select_mode.mjs"
+import { clearAllHandler, clearMessagesHandler, clearStickersHandler } from "./handlers/clear.mjs"
+import { enableBotHandler, disableBotHandler } from "./handlers/switcher.mjs"
+import switcher from "./commands/switcher.mjs"
+import informationChat from "./commands/info.mjs"
+import generatePoemCommand from "./commands/poem.mjs"
+import newMode from "./commands/newmode.mjs"
 
-const bot = new Telegraf(process.env.token);
+const bot = new Telegraf(process.env.token)
+const requestQueue = new Map()
+const MAX_CONCURRENT_REQUESTS = 50
 
 const wrapHandlerWithTimeout = (handler, timeout = 30000) => {
     return async (ctx, next) => {
+        let timeoutId
         const timeoutPromise = new Promise((_, reject) => {
-            const timeoutId = setTimeout(() => {
-                reject(new Error(`Handler timed out after ${timeout}ms`));
-            }, timeout);
-            timeoutPromise.cleanup = () => clearTimeout(timeoutId);
-        });
+            timeoutId = setTimeout(() => {
+                reject(new Error(`Handler timed out after ${timeout}ms`))
+            }, timeout)
+        })
 
         try {
             const result = await Promise.race([
                 handler(ctx, next),
                 timeoutPromise
-            ]);
-            timeoutPromise.cleanup?.();
-            return result;
+            ])
+            clearTimeout(timeoutId)
+            return result
         } catch (error) {
-            timeoutPromise.cleanup?.();
-            
-            console.error(`Handler error: ${error.message}`);
-            logErrorToFile(error);
+            clearTimeout(timeoutId)
+            console.error(`Handler error: ${error.message}`)
+            logErrorToFile(error)
             
             if (ctx && ctx.reply && !ctx.replied) {
                 try {
-                    await ctx.reply("Произошла ошибка при обработке запроса. Пожалуйста, повторите позже.");
+                    await ctx.reply("Произошла ошибка при обработке запроса. Пожалуйста, повторите позже.")
                 } catch (replyError) {
-                    console.error('Failed to send error message:', replyError);
+                    console.error('Failed to send error message:', replyError)
                 }
             }
             
-            throw error;
+            throw error
         }
-    };
-};
+    }
+}
 
 const logErrorToFile = (error) => {
-    const errorFilePath = path.resolve('errors.txt');
+    const errorFilePath = path.resolve('errors.txt')
     const date = new Date().toLocaleString('en-US', {
         timeZone: 'UTC',
         year: 'numeric',
@@ -65,46 +66,64 @@ const logErrorToFile = (error) => {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit'
-    });
-    const logMessage = `${date}\n${error.stack || error}\n\n`;
-    fs.appendFileSync(errorFilePath, logMessage, { encoding: 'utf8' });
-};
+    })
+    const logMessage = `${date}\n${error.stack || error}\n\n`
+    fs.appendFileSync(errorFilePath, logMessage, { encoding: 'utf8' })
+}
 
-bot.start(wrapHandlerWithTimeout(startCommand));
-bot.command("enable", wrapHandlerWithTimeout(switcher));
-bot.command("disable", wrapHandlerWithTimeout(switcher));
-bot.command("clear", wrapHandlerWithTimeout(clear));
-bot.command("mail", wrapHandlerWithTimeout(mailToAll));
-bot.command("mode", wrapHandlerWithTimeout(Mode));
-bot.command("switcher", wrapHandlerWithTimeout(switcher));
-bot.command("information", wrapHandlerWithTimeout(informationChat));
-bot.command("poem", wrapHandlerWithTimeout(generatePoemCommand));
-bot.command("newmode", wrapHandlerWithTimeout(newMode));
+const processRequest = async (chatId, handler) => {
+    if (requestQueue.size >= MAX_CONCURRENT_REQUESTS) {
+        console.warn(`Too many concurrent requests for chat ${chatId}`)
+        return
+    }
+    requestQueue.set(chatId, true)
+    try {
+        await handler()
+    } finally {
+        requestQueue.delete(chatId)
+    }
+}
 
-bot.action("bot_enable", wrapHandlerWithTimeout(enableBotHandler));
-bot.action("bot_disable", wrapHandlerWithTimeout(disableBotHandler));
-bot.action("clear_messages", wrapHandlerWithTimeout(clearMessagesHandler));
-bot.action("clear_stickers", wrapHandlerWithTimeout(clearStickersHandler));
-bot.action("clear_all", wrapHandlerWithTimeout(clearAllHandler));
+setInterval(() => {
+    const used = process.memoryUsage()
+    console.log(`Memory usage: ${Math.round(used.heapUsed / 1024 / 1024)}MB`)
+}, 60000)
 
-bot.on('callback_query', wrapHandlerWithTimeout(selectModeHandler));
-bot.on(message('text'), wrapHandlerWithTimeout(on_message));
-bot.on(message('sticker'), wrapHandlerWithTimeout(on_sticker));
+bot.start(wrapHandlerWithTimeout(startCommand))
+bot.command("enable", wrapHandlerWithTimeout(switcher))
+bot.command("disable", wrapHandlerWithTimeout(switcher))
+bot.command("clear", wrapHandlerWithTimeout(clear))
+bot.command("mail", wrapHandlerWithTimeout(mailToAll))
+bot.command("mode", wrapHandlerWithTimeout(Mode))
+bot.command("switcher", wrapHandlerWithTimeout(switcher))
+bot.command("information", wrapHandlerWithTimeout(informationChat))
+bot.command("poem", wrapHandlerWithTimeout(generatePoemCommand))
+bot.command("newmode", wrapHandlerWithTimeout(newMode))
+
+bot.action("bot_enable", wrapHandlerWithTimeout(enableBotHandler))
+bot.action("bot_disable", wrapHandlerWithTimeout(disableBotHandler))
+bot.action("clear_messages", wrapHandlerWithTimeout(clearMessagesHandler))
+bot.action("clear_stickers", wrapHandlerWithTimeout(clearStickersHandler))
+bot.action("clear_all", wrapHandlerWithTimeout(clearAllHandler))
+
+bot.on('callback_query', wrapHandlerWithTimeout(selectModeHandler))
+bot.on(message('text'), wrapHandlerWithTimeout(on_message))
+bot.on(message('sticker'), wrapHandlerWithTimeout(on_sticker))
 
 const gracefulShutdown = async () => {
-    console.log('Shutting down gracefully...');
+    console.log('Shutting down gracefully...')
     try {
-        await bot.stop();
-        console.log('Bot stopped successfully');
-        process.exit(0);
+        await bot.stop()
+        console.log('Bot stopped successfully')
+        process.exit(0)
     } catch (error) {
-        console.error('Error during shutdown:', error);
-        process.exit(1);
+        console.error('Error during shutdown:', error)
+        process.exit(1)
     }
-};
+}
 
-process.once('SIGINT', gracefulShutdown);
-process.once('SIGTERM', gracefulShutdown);
+process.once('SIGINT', gracefulShutdown)
+process.once('SIGTERM', gracefulShutdown)
 
 bot.launch({
     dropPendingUpdates: true,
@@ -116,6 +135,6 @@ bot.launch({
     }
 }, () => console.log(process.env.bot_name, 'успешно запущен!'))
     .catch((err) => {
-        console.error('Ошибка при запуске бота:', err);
-        process.exit(1);
-    });
+        console.error('Ошибка при запуске бота:', err)
+        process.exit(1)
+    })
