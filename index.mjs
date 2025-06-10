@@ -18,25 +18,39 @@ import informationChat from "./commands/info.mjs";
 import generatePoemCommand from "./commands/poem.mjs";
 import newMode from "./commands/newmode.mjs";
 
-
-
-
 const bot = new Telegraf(process.env.token);
 
-const wrapHandlerWithTimeout = (handler, timeout = 10000) => {
+const wrapHandlerWithTimeout = (handler, timeout = 30000) => {
     return async (ctx, next) => {
         const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("TimeoutError: Promise timed out")), timeout);
+            const timeoutId = setTimeout(() => {
+                reject(new Error(`Handler timed out after ${timeout}ms`));
+            }, timeout);
+            timeoutPromise.cleanup = () => clearTimeout(timeoutId);
         });
 
         try {
-            await Promise.race([handler(ctx, next), timeoutPromise]);
+            const result = await Promise.race([
+                handler(ctx, next),
+                timeoutPromise
+            ]);
+            timeoutPromise.cleanup?.();
+            return result;
         } catch (error) {
-            console.error(`Ошибка в обработчике: ${error.message}`);
+            timeoutPromise.cleanup?.();
+            
+            console.error(`Handler error: ${error.message}`);
             logErrorToFile(error);
-            if (ctx.reply) {
-                try { await ctx.reply("Произошла ошибка. Пожалуйста, повторите позже."); } catch { }
+            
+            if (ctx && ctx.reply && !ctx.replied) {
+                try {
+                    await ctx.reply("Произошла ошибка при обработке запроса. Пожалуйста, повторите позже.");
+                } catch (replyError) {
+                    console.error('Failed to send error message:', replyError);
+                }
             }
+            
+            throw error;
         }
     };
 };
@@ -77,5 +91,31 @@ bot.on('callback_query', wrapHandlerWithTimeout(selectModeHandler));
 bot.on(message('text'), wrapHandlerWithTimeout(on_message));
 bot.on(message('sticker'), wrapHandlerWithTimeout(on_sticker));
 
-bot.launch({ dropPendingUpdates: true }, () => console.log(process.env.bot_name, 'успешно запущен!'))
-    .catch((err) => console.error('Ошибка при запуске бота:', err));
+const gracefulShutdown = async () => {
+    console.log('Shutting down gracefully...');
+    try {
+        await bot.stop();
+        console.log('Bot stopped successfully');
+        process.exit(0);
+    } catch (error) {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+    }
+};
+
+process.once('SIGINT', gracefulShutdown);
+process.once('SIGTERM', gracefulShutdown);
+
+bot.launch({
+    dropPendingUpdates: true,
+    allowedUpdates: ['message', 'callback_query'],
+    polling: {
+        timeout: 30,
+        limit: 100,
+        retryAfter: 1
+    }
+}, () => console.log(process.env.bot_name, 'успешно запущен!'))
+    .catch((err) => {
+        console.error('Ошибка при запуске бота:', err);
+        process.exit(1);
+    });
