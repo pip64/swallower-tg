@@ -28,7 +28,7 @@ export default async function Mode(ctx) {
                     if (result) {
                         const [isExists, chat] = await isChatExists(ctx.message.chat.id);
 
-                        const otherMode = ctx.message.text.split("/mode")[1].trim();
+                        const otherMode = ctx.message.text.replace("@" + ctx.botInfo.username, "").split("/mode")[1].trim();
 
                         if (otherMode.length > 0) {
                             const mode = await getMode(Number(otherMode));
