@@ -12,6 +12,7 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "get-random-emoji": "^1.0.0",
+    "gtts": "^0.2.1",
     "knex": "^3.1.0",
     "markov-chainer": "^0.1.8",
     "markov-chains": "^1.0.2",

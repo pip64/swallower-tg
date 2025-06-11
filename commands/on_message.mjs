@@ -6,6 +6,13 @@ import stickerChoice from "../modules/messages/sticker.mjs"
 import initChat from "../modules/chats/initChat.mjs"
 import isChatExists from "../modules/chats/isChatExists.mjs"
 import on_direct_message from "./on_direct_message.mjs"
+import gtts from 'gtts'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const reactionsList = ['🤩', '🤮', '🙏', '🕊', '🤡', '🥱', '😍', '🌚', '🌭', '💯', '🖕', '😈', '😎', '💊', '🤷‍♂️', '🤷‍♀️', '🤨', '😴', '🤓', '🗿']
 const MAX_MESSAGE_LENGTH = 1000
@@ -43,7 +50,7 @@ export default async function on_message(ctx) {
                     return
                 }
 
-                const messageType = weightedRandom(["message", "sticker"], [85, 15])
+                const messageType = weightedRandom(["message", "sticker", "voice"], [65, 15, 20])
 
                 switch (messageType) {
                     case "message":
@@ -72,6 +79,46 @@ export default async function on_message(ctx) {
                         } catch (error) {
                             console.error('Error generating/sending message:', error)
                             await ctx.reply('Извините, произошла ошибка при генерации ответа.')
+                                .catch(console.error)
+                        }
+                        break
+
+                    case "voice":
+                        try {
+                            const generatedSentence = await generateMarkov(
+                                ctx.message?.text, 
+                                ctx.message.chat.id, 
+                                Math.min(25, MAX_MESSAGE_LENGTH), 
+                                chat.mode
+                            )
+
+                            if (!generatedSentence) {
+                                throw new Error('Failed to generate sentence')
+                            }
+
+                            const fixedSentence = generatedSentence[0]?.toUpperCase() + 
+                                generatedSentence?.slice(1)
+
+                            await ctx.telegram.sendChatAction(ctx.message.chat.id, 'record_voice')
+                            
+                            const tts = new gtts(fixedSentence, 'ru')
+                            const voicePath = path.join(process.cwd(), 'database', 'voice', `voice_${Date.now()}.mp3`)
+                            
+                            await new Promise((resolve, reject) => {
+                                tts.save(voicePath, (err) => {
+                                    if (err) reject(err)
+                                    else resolve()
+                                })
+                            })
+
+                            await ctx.replyWithVoice({ source: voicePath }, {
+                                reply_to_message_id: ctx.message.message_id
+                            })
+
+                            fs.unlinkSync(voicePath)
+                        } catch (error) {
+                            console.error('Error generating/sending voice message:', error)
+                            await ctx.reply('Извините, произошла ошибка при генерации голосового сообщения.')
                                 .catch(console.error)
                         }
                         break
