@@ -173,6 +173,7 @@ bot.action("clear_all", wrapHandlerWithTimeout(clearAllHandler))
 
 bot.on('callback_query', wrapHandlerWithTimeout(selectModeHandler))
 bot.on(message('text'), wrapHandlerWithTimeout(on_message))
+bot.on(message('poll'), wrapHandlerWithTimeout(on_message))
 bot.on(message('sticker'), wrapHandlerWithTimeout(on_sticker))
 
 const gracefulShutdown = async () => {

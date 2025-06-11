@@ -26,6 +26,18 @@ export default async function on_message(ctx) {
             const [isExists, chat] = await isChatExists(ctx.message.chat.id)
 
             if (isExists && chat?.enabled) {
+                if (ctx?.message?.poll) {
+                    const pollOptions = ctx.message.poll.options
+                    const randomOptionIndex = getRandomInt(pollOptions.length)
+                    try {
+                        await ctx.reply(`я за "${pollOptions[randomOptionIndex].text}"`, { 
+                            reply_to_message_id: ctx.message.message_id 
+                        })
+                    } catch (error) {
+                        console.log(error)
+                    }
+                }
+
                 if (ctx?.message?.text) {
                     saveMessage(ctx.message.text, ctx.message.chat.id, "messages")
                         .catch(error => console.error('Error saving message:', error))
