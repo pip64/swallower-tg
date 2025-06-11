@@ -18,6 +18,7 @@ import informationChat from "./commands/info.mjs"
 import generatePoemCommand from "./commands/poem.mjs"
 import newMode from "./commands/newmode.mjs"
 import download from "./commands/download.mjs"
+import generateStoryCommand from "./commands/story.mjs"
 
 const bot = new Telegraf(process.env.token)
 const requestQueue = new Map()
@@ -163,6 +164,7 @@ bot.command("mode", wrapHandlerWithTimeout(Mode))
 bot.command("switcher", wrapHandlerWithTimeout(switcher))
 bot.command("information", wrapHandlerWithTimeout(informationChat))
 bot.command("poem", wrapHandlerWithTimeout(generatePoemCommand))
+bot.command("story", wrapHandlerWithTimeout(generateStoryCommand))
 bot.command("newmode", wrapHandlerWithTimeout(newMode))
 
 bot.action("bot_enable", wrapHandlerWithTimeout(enableBotHandler))
