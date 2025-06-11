@@ -17,6 +17,7 @@ import switcher from "./commands/switcher.mjs"
 import informationChat from "./commands/info.mjs"
 import generatePoemCommand from "./commands/poem.mjs"
 import newMode from "./commands/newmode.mjs"
+import download from "./commands/download.mjs"
 
 const bot = new Telegraf(process.env.token)
 const requestQueue = new Map()
@@ -157,6 +158,7 @@ bot.command("enable", wrapHandlerWithTimeout(switcher))
 bot.command("disable", wrapHandlerWithTimeout(switcher))
 bot.command("clear", wrapHandlerWithTimeout(clear))
 bot.command("mail", wrapHandlerWithTimeout(mailToAll, 300000))
+bot.command("download", wrapHandlerWithTimeout(download))
 bot.command("mode", wrapHandlerWithTimeout(Mode))
 bot.command("switcher", wrapHandlerWithTimeout(switcher))
 bot.command("information", wrapHandlerWithTimeout(informationChat))
