@@ -50,7 +50,7 @@ export default async function on_message(ctx) {
                     return
                 }
 
-                const messageType = weightedRandom(["message", "sticker", "voice"], [65, 15, 20])
+                const messageType = weightedRandom(["message", "sticker", "voice"], [55, 15, 30])
 
                 switch (messageType) {
                     case "message":
